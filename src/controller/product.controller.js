@@ -1167,28 +1167,18 @@ export const getListHot = async (req, res) => {};
 export const getRecommendationById = async (req, res) => {
     try {
         const { filter } = aqp(req.query);
-        const {
-            productId = req.params.productId,
-            page = 1,
-            limit = 10,
-        } = filter;
+        const { productId = req.params.productId, page = 0, size = 5 } = filter;
 
-        if (!productId) {
-            return errorResponse400(res, "Product ID is required");
-        }
+        validateMongoDbId(productId);
 
         const result = await getRecommendationsService(
             productId,
             parseInt(page),
-            parseInt(limit)
+            parseInt(size)
         );
-        return successResponse(
-            res,
-            "Recommendations fetched successfully",
-            result
-        );
+        return successResponseList(res, "", result.data, result.pagination);
     } catch (error) {
-        return errorResponse500(res, "Server error", error.message);
+        return errorResponse500(res, "Lỗi server", error.message);
     }
 };
 
@@ -1312,7 +1302,6 @@ export const relateProduct = async (req, res) => {
                         price: 1,
                         size: 1,
                         stock: 1,
-                        cache: 1,
                     },
                     likeQuantity: {
                         _id: 1,
@@ -1331,7 +1320,6 @@ export const relateProduct = async (req, res) => {
                     return item.product.equals(product._id);
                 });
 
-                console.log(likedItem, "likedItem");
                 return {
                     ...product,
                     liked: likedItem?.liked,
@@ -1369,6 +1357,7 @@ export const relateProduct = async (req, res) => {
         return errorResponse500(res, "Lỗi server", error.message);
     }
 };
+
 export const toggleLikeProduct = async (req, res) => {
     const userId = req.user._id;
     const { productId, liked } = req.query;
@@ -1408,6 +1397,7 @@ export const toggleLikeProduct = async (req, res) => {
         return errorResponse500(res, "Lỗi server", error.message);
     }
 };
+
 export const getAllProductWishList = async (req, res) => {
     try {
         const userId = req.user._id;

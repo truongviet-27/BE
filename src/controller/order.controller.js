@@ -257,6 +257,7 @@ const getAllOrderStatus = async (req, res) => {
         return errorResponse500(res, "Lỗi server", error.message);
     }
 };
+
 const getAllOrder = async (req, res) => {
     try {
         const { accountId, statusCode, page, size } = req.query;
@@ -274,68 +275,71 @@ const getAllOrder = async (req, res) => {
 
         console.log(matchFilter, "matchFiltexxxx");
 
-        const [orders, total] = await Promise.all([
-            Order.aggregate([
-                {
-                    $lookup: {
-                        from: "orderstatuses",
-                        localField: "orderStatus",
-                        foreignField: "_id",
-                        as: "orderStatus",
-                    },
+        const result = await Order.aggregate([
+            {
+                $lookup: {
+                    from: "orderstatuses",
+                    localField: "orderStatus",
+                    foreignField: "_id",
+                    as: "orderStatus",
                 },
-                { $unwind: "$orderStatus" },
-
-                {
-                    $lookup: {
-                        from: "shipments",
-                        localField: "shipment",
-                        foreignField: "_id",
-                        as: "shipment",
-                    },
+            },
+            { $unwind: "$orderStatus" },
+            {
+                $lookup: {
+                    from: "shipments",
+                    localField: "shipment",
+                    foreignField: "_id",
+                    as: "shipment",
                 },
-                {
-                    $unwind: {
-                        path: "$shipment",
-                        preserveNullAndEmptyArrays: true,
-                    },
+            },
+            {
+                $unwind: {
+                    path: "$shipment",
+                    preserveNullAndEmptyArrays: true,
                 },
-
-                { $match: matchFilter },
-                {
-                    $project: {
-                        _id: 1,
-                        code: 1,
-                        address: 1,
-                        fullName: 1,
-                        phone: 1,
-                        email: 1,
-                        note: 1,
-                        total: 1,
-                        isPayment: 1,
-                        payment: 1,
-                        shipDate: 1,
-                        createdAt: 1,
-                        orderStatus: {
-                            _id: 1,
-                            name: 1,
-                            code: 1,
+            },
+            { $match: matchFilter },
+            {
+                $facet: {
+                    data: [
+                        { $sort: { createdAt: -1 } },
+                        { $skip: +page * +size },
+                        { $limit: +size },
+                        {
+                            $project: {
+                                _id: 1,
+                                code: 1,
+                                address: 1,
+                                fullName: 1,
+                                phone: 1,
+                                email: 1,
+                                note: 1,
+                                total: 1,
+                                isPayment: 1,
+                                payment: 1,
+                                shipDate: 1,
+                                createdAt: 1,
+                                orderStatus: {
+                                    _id: 1,
+                                    name: 1,
+                                    code: 1,
+                                },
+                                shipment: {
+                                    _id: 1,
+                                    name: 1,
+                                    code: 1,
+                                },
+                            },
                         },
-                        shipment: {
-                            _id: 1,
-                            name: 1,
-                            code: 1,
-                        },
-                    },
+                    ],
+                    total: [{ $count: "count" }],
                 },
-
-                { $sort: { createdAt: -1 } },
-                { $skip: +page * +size },
-                { $limit: +size },
-            ]),
-
-            Order.countDocuments(matchFilter),
+            },
         ]);
+
+        const orders = result[0].data;
+        const total = result[0].total[0]?.count || 0;
 
         if (!orders) {
             return errorResponse400(res, "Không tìm thấy đơn hàng");
@@ -708,8 +712,14 @@ const amountYear = async (req, res) => {
                     isPaymentTrue: [
                         {
                             $match: {
-                                isPayment: true,
-                                "orderStatus.code": { $ne: "CANCELLED" },
+                                $and: [
+                                    { isPayment: true },
+                                    {
+                                        "orderStatus.code": {
+                                            $ne: "REFUND",
+                                        },
+                                    },
+                                ],
                             },
                         },
                         {
@@ -740,8 +750,18 @@ const amountYear = async (req, res) => {
                     isPaymentFalseNotDelivered: [
                         {
                             $match: {
-                                isPayment: false,
-                                "orderStatus.code": { $ne: "DELIVERED" },
+                                $and: [
+                                    { isPayment: false },
+                                    {
+                                        "orderStatus.code": {
+                                            $in: [
+                                                "PENDING_CONFIRM",
+                                                "PROCESSING",
+                                                "SHIPPING",
+                                            ],
+                                        },
+                                    },
+                                ],
                             },
                         },
                         {
@@ -881,11 +901,11 @@ const getOrderByOrderStatusAndYearAndMonth = async (req, res) => {
         let dateFilter = [];
 
         if (month) {
-            dateFilter.push({ $eq: [{ $month: "$updatedAt" }, Number(month)] });
+            dateFilter.push({ $eq: [{ $month: "$createdAt" }, Number(month)] });
         }
 
         if (year) {
-            dateFilter.push({ $eq: [{ $year: "$updatedAt" }, Number(year)] });
+            dateFilter.push({ $eq: [{ $year: "$createdAt" }, Number(year)] });
         }
 
         if (dateFilter.length > 0) {
