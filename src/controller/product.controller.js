@@ -1,21 +1,20 @@
 import aqp from "api-query-params";
 import mongoose from "mongoose";
+import cloudinary from "../config/cloudinary.js";
 import { ErrorCustom } from "../helper/ErrorCustom.js";
+import Attribute from "../model/attribute.js";
+import Image from "../model/image.js";
 import Product from "../model/product.js";
 import Product_Category from "../model/product_category.js";
 import ProductUserLike from "../model/product_user_like.js";
+import getRecommendationsService from "../service/recomendation.service.js";
 import {
     errorResponse400,
     errorResponse500,
-    notFoundResponse,
     successResponse,
     successResponseList,
 } from "../utils/responseHandler.js";
 import validateMongoDbId from "../utils/validateMongodbId.js";
-import Attribute from "../model/attribute.js";
-import cloudinary from "../config/cloudinary.js";
-import Image from "../model/image.js";
-import getRecommendationsService from "../service/recomendation.service.js";
 
 export const getAllProduct = async (req, res) => {
     try {
