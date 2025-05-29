@@ -28,9 +28,6 @@ import {
     authIsManagerMiddleware,
     authMiddleware,
 } from "../middleware/authMiddlewares.js";
-import validate from "../middleware/validate.js";
-import userSchemaJoi from "../validation/user.validation.js";
-import userDetailSchemaJoi from "../validation/userDetail.validation.js";
 
 const router = express.Router();
 

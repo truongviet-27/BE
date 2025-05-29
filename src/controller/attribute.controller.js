@@ -1,31 +1,21 @@
-import aqp from "api-query-params";
-import Attribute from "../model/attribute.js";
+import { ErrorCustom } from "../helper/ErrorCustom.js";
+import {
+    getAllReviewsByProductIdService,
+    getAttributeByIdService,
+    getAttributesByProductAndSize,
+    getReviewByOrderDetailIdService,
+    reviewAttributeService,
+} from "../service/attribute.service.js";
 import {
     errorResponse400,
     errorResponse500,
     successResponse,
     successResponseList,
 } from "../utils/responseHandler.js";
-import validateMongoDbId from "../utils/validateMongodbId.js";
-import { ErrorCustom } from "../helper/ErrorCustom.js";
-import UserReviewAttribute from "../model/user_review_attribute.js";
-import mongoose from "mongoose";
 
 export const getAttribute = async (req, res) => {
     try {
-        const { filter } = aqp(req.query);
-        const { productId, size } = filter;
-        validateMongoDbId(productId);
-        const attributes = await Attribute.findOne({
-            $and: [
-                {
-                    product: productId,
-                },
-                {
-                    size,
-                },
-            ],
-        });
+        const attributes = await getAttributesByProductAndSize(req.query);
         return successResponse(
             res,
             "Lấy danh sách thuộc tính thành công!",
@@ -42,8 +32,7 @@ export const getAttribute = async (req, res) => {
 export const getAttributeById = async (req, res) => {
     try {
         const { id } = req.params;
-        validateMongoDbId(id);
-        const attribute = await Attribute.findById(id);
+        const attribute = await getAttributeByIdService(id);
         return successResponse(res, "", attribute);
     } catch (error) {
         if (error instanceof ErrorCustom) {
@@ -56,21 +45,9 @@ export const getAttributeById = async (req, res) => {
 export const reviewAttribute = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { rating, description, attributeId, orderDetailId, productId } =
-            req.body;
-        validateMongoDbId(userId);
-        validateMongoDbId(attributeId);
-        validateMongoDbId(orderDetailId);
-        await UserReviewAttribute.create({
-            user: userId,
-            rating,
-            description,
-            attribute: attributeId,
-            orderDetail: orderDetailId,
-            product: productId,
-        });
-
-        return successResponse(res, "Đánh giá thuộc tính thành công!", true);
+        const reviewData = { ...req.body, userId };
+        await reviewAttributeService(reviewData);
+        return successResponse(res, "Đánh giá sản phẩm thành công!", true);
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);
@@ -81,98 +58,15 @@ export const reviewAttribute = async (req, res) => {
 
 export const getAllReviewAttributeByProductId = async (req, res) => {
     try {
-        let { productId, page, size } = req.query;
-        validateMongoDbId(productId);
-        page = parseInt(page);
-        size = parseInt(size);
+        const { productId, page, size } = req.query;
 
-        const [reviews, total] = await Promise.all([
-            await UserReviewAttribute.aggregate([
-                {
-                    $match: {
-                        product: new mongoose.Types.ObjectId(productId),
-                    },
-                },
+        const { reviews, pagination } = await getAllReviewsByProductIdService(
+            productId,
+            page,
+            size
+        );
 
-                {
-                    $lookup: {
-                        from: "users",
-                        localField: "user",
-                        foreignField: "_id",
-                        as: "user",
-                    },
-                },
-                { $unwind: "$user" },
-                {
-                    $lookup: {
-                        from: "userdetails",
-                        localField: "user._id",
-                        foreignField: "userId",
-                        as: "userDetail",
-                    },
-                },
-                {
-                    $unwind: {
-                        path: "$userDetail",
-                        preserveNullAndEmptyArrays: true,
-                    },
-                },
-
-                {
-                    $lookup: {
-                        from: "attributes",
-                        localField: "attribute",
-                        foreignField: "_id",
-                        as: "attribute",
-                    },
-                },
-                { $unwind: "$attribute" },
-
-                {
-                    $lookup: {
-                        from: "products",
-                        localField: "product",
-                        foreignField: "_id",
-                        as: "product",
-                    },
-                },
-                { $unwind: "$product" },
-
-                {
-                    $project: {
-                        _id: 1,
-                        comment: 1,
-                        rating: 1,
-                        description: 1,
-                        createdAt: 1,
-                        user: {
-                            _id: "$user._id",
-                            username: "$user.username",
-                            avatar: "$userDetail.avatar",
-                        },
-                        attribute: {
-                            _id: 1,
-                            size: 1,
-                        },
-                        product: {
-                            _id: 1,
-                            name: 1,
-                        },
-                    },
-                },
-
-                { $skip: page * size },
-                { $limit: size },
-            ]),
-
-            await UserReviewAttribute.countDocuments({ product: productId }),
-        ]);
-        return successResponseList(res, "", reviews, {
-            total,
-            page: page,
-            size: size,
-            totalPages: Math.ceil(total / size),
-        });
+        return successResponseList(res, "", reviews, pagination);
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);
@@ -184,12 +78,9 @@ export const getAllReviewAttributeByProductId = async (req, res) => {
 export const getReviewAttributeByOrderDetailId = async (req, res) => {
     try {
         const { orderDetailId } = req.query;
-        console.log(orderDetailId, "orderDetailId");
-        validateMongoDbId(orderDetailId);
-        const reviews = await UserReviewAttribute.findOne({
-            orderDetail: orderDetailId,
-        });
-        return successResponse(res, "", reviews);
+        const review = await getReviewByOrderDetailIdService(orderDetailId);
+
+        return successResponse(res, "", review);
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);

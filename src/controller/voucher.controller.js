@@ -1,6 +1,13 @@
-import aqp from "api-query-params";
 import { ErrorCustom } from "../helper/ErrorCustom.js";
 import Voucher from "../model/voucher.js";
+import {
+    createVoucherService,
+    deleteVoucherService,
+    getAllVouchersService,
+    getVoucherByCodeService,
+    getVoucherByIdService,
+    updateVoucherService,
+} from "../service/voucher.service.js";
 import {
     errorResponse400,
     errorResponse500,
@@ -11,54 +18,13 @@ import validateMongoDbId from "../utils/validateMongodbId.js";
 
 export const getAllVouchers = async (req, res) => {
     try {
-        const { filter } = aqp(req.query);
-        const { page, size } = filter;
-        const { query, search } = req.query;
+        const { vouchers, pagination } = await getAllVouchersService(req.query);
 
-        let matchFilter = {};
-        let sort = { createdAt: -1 };
-
-        if (query) {
-            let [key, value] = query.split("-");
-
-            if (key === "code") {
-                sort = { code: value === "asc" ? 1 : -1 };
-            } else {
-                if (key && value) {
-                    matchFilter[key] = value === "true" ? true : false;
-                }
-            }
-        }
-
-        if (search) {
-            matchFilter["$or"] = [{ code: { $regex: search, $options: "i" } }];
-        }
-
-        const [vouchers, total] = await Promise.all([
-            Voucher.aggregate([
-                {
-                    $match: matchFilter,
-                },
-                { $sort: sort },
-                {
-                    $skip: page * size,
-                },
-                {
-                    $limit: size,
-                },
-            ]),
-            Voucher.countDocuments(matchFilter),
-        ]);
         return successResponseList(
             res,
             "Lấy danh sách voucher thành công!",
             vouchers,
-            {
-                total,
-                page: page,
-                size: size,
-                totalPages: Math.ceil(total / size),
-            }
+            pagination
         );
     } catch (error) {
         return errorResponse500(res, "Lỗi server", error.message);
@@ -68,12 +34,9 @@ export const getAllVouchers = async (req, res) => {
 export const getVoucherById = async (req, res) => {
     try {
         const { id } = req.query;
-        validateMongoDbId(id);
-        const voucher = await Voucher.findById(id).select(
-            "-updatedAt -__v -createdAt"
-        );
+        const voucher = await getVoucherByIdService(id);
 
-        if (!voucher || voucher.deletedAt) {
+        if (!voucher) {
             return successResponse(res, "Không tìm thấy voucher");
         }
 
@@ -88,7 +51,7 @@ export const getVoucherById = async (req, res) => {
 
 export const createVoucher = async (req, res) => {
     try {
-        const newVoucher = await Voucher.create(req.body);
+        const newVoucher = await createVoucherService(req.body);
         return successResponse(res, "Tạo voucher thành công!", newVoucher);
     } catch (error) {
         return errorResponse500(res, "Lỗi server", error.message);
@@ -97,11 +60,7 @@ export const createVoucher = async (req, res) => {
 
 export const updateVoucher = async (req, res) => {
     try {
-        const { _id } = req.body;
-        validateMongoDbId(_id);
-        const updatedVoucher = await Voucher.findByIdAndUpdate(_id, req.body, {
-            new: true,
-        });
+        const updatedVoucher = await updateVoucherService(req.body);
         return successResponse(
             res,
             "Cập nhật voucher thành công!",
@@ -118,20 +77,21 @@ export const updateVoucher = async (req, res) => {
 export const deleteVoucher = async (req, res) => {
     try {
         const { id } = req.params;
+        const result = await deleteVoucherService(id);
 
-        if (validateMongoDbId(id)) {
-            return successResponse(res, "Không tìm thấy voucher");
+        if (result) {
+            return successResponse(
+                res,
+                "Voucher đã được xóa thành công!",
+                true
+            );
         }
 
-        const voucher = await Voucher.findById(id);
-        if (!voucher || voucher.deletedAt) {
-            return successResponse(res, "Không tìm thấy voucher");
-        }
-
-        voucher.deletedAt = new Date();
-        await voucher.save();
-
-        return res.json({ success: true, message: "Voucher đã được xóa mềm" });
+        return errorResponse400(
+            res,
+            "Voucher đã được xóa không thành công!",
+            false
+        );
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);
@@ -143,26 +103,7 @@ export const deleteVoucher = async (req, res) => {
 export const getVoucherByCode = async (req, res) => {
     try {
         const { code } = req.query;
-        if (!code) {
-            return errorResponse400(res, "Mã giảm giá không hợp lệ!");
-        }
-        const voucher = await Voucher.findOne({ code }).select(
-            "-updatedAt -__v -createdAt -isActive"
-        );
-
-        if (!voucher) {
-            return errorResponse400(res, "Không tìm thấy voucher");
-        }
-
-        if (voucher?.expireDate && new Date(voucher.expireDate) < new Date()) {
-            return errorResponse400(res, "Voucher đã hết hạn");
-        }
-
-        if (voucher?.count && voucher.count <= 0) {
-            return errorResponse400(res, "Voucher đã hết lượt sử dụng");
-        }
-
-        delete voucher.count;
+        const voucher = await getVoucherByCodeService(code);
 
         return successResponse(res, "Lấy voucher thành công!", voucher);
     } catch (error) {

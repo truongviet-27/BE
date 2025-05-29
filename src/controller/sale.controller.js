@@ -9,33 +9,18 @@ import {
     successResponseList,
 } from "../utils/responseHandler.js";
 import { ErrorCustom } from "../helper/ErrorCustom.js";
+import { getAllSaleAdminService, getAllSaleService } from "../service/sale.service.js";
 
 export const getAllSale = async (req, res) => {
     try {
         const { filter } = aqp(req.query);
-        const { page, size, isActive = true } = filter;
-        const { query, search } = req.query;
+        const { page = 0, size = 10, isActive = true } = filter;
 
-        let matchFilter = {
-            isActive: isActive,
-        };
-        let sort = { createdAt: -1 };
-
-        const [sales, total] = await Promise.all([
-            Sale.aggregate([
-                { $match: matchFilter },
-                { $sort: sort },
-                {
-                    $skip: page * size,
-                },
-                {
-                    $limit: size,
-                },
-            ]),
-            Sale.countDocuments(matchFilter),
-        ]);
-
-        console.log(sales, "sales");
+        const { sales, total } = await getAllSaleService({
+            page,
+            size,
+            isActive,
+        });
 
         return successResponseList(
             res,
@@ -43,8 +28,8 @@ export const getAllSale = async (req, res) => {
             sales,
             {
                 total,
-                page: page,
-                size: size,
+                page,
+                size,
                 totalPages: Math.ceil(total / size),
             }
         );
@@ -55,57 +40,25 @@ export const getAllSale = async (req, res) => {
         return errorResponse500(res, "Lỗi server", error.message);
     }
 };
+
 export const getAllSaleAdmin = async (req, res) => {
     try {
         const { filter } = aqp(req.query);
-        const { page, size } = filter;
+        const { page = 0, size = 10 } = filter;
         const { query, search } = req.query;
 
-        let matchFilter = {};
-        let sort = { createdAt: -1 };
-
-        if (query) {
-            let [key, value] = query.split("-");
-
-            if (key === "name") {
-                sort = { name: value === "asc" ? 1 : -1 };
-            } else {
-                if (key && value) {
-                    matchFilter[key] = value === "true" ? true : false;
-                }
-            }
-        }
-
-        if (search) {
-            matchFilter["$or"] = [{ name: { $regex: search, $options: "i" } }];
-        }
-
-        const [sales, total] = await Promise.all([
-            Sale.aggregate([
-                { $match: matchFilter },
-                { $sort: sort },
-                {
-                    $skip: page * size,
-                },
-                {
-                    $limit: size,
-                },
-            ]),
-            Sale.countDocuments(matchFilter),
-        ]);
-
-        console.log(sales, "sales");
+        const { sales, pagination } = await getAllSaleAdminService({
+            page,
+            size,
+            query,
+            search,
+        });
 
         return successResponseList(
             res,
             "Lấy danh sách giảm giá thành công!",
             sales,
-            {
-                total,
-                page: page,
-                size: size,
-                totalPages: Math.ceil(total / size),
-            }
+            pagination
         );
     } catch (error) {
         if (error instanceof ErrorCustom) {

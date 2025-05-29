@@ -270,9 +270,13 @@ const handleRefreshToken = async (req, res) => {
     const refreshToken = req.body.refreshToken;
     try {
         if (!refreshToken) {
-            return errorResponse400(res, "Refresh Token het han");
+            return errorResponse400(res, "Refresh Token không tồn tại!");
         }
         const decodedUser = jwt.verify(refreshToken, process.env.JWT_SECRET);
+
+        if (!decodedUser) {
+            return errorResponse400(res, "Refresh Token không hợp lệ!");
+        }
         const user = await User.findById(decodedUser?.id);
         const accessToken = generateToken(user._id);
         return successResponse(res, "Refresh token thành công!", accessToken);

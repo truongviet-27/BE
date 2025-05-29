@@ -102,6 +102,20 @@ const createOrder = async (req, res) => {
             ]);
         }
 
+
+        // Emit real-time notification
+        if (req.io) {
+            req.io.to("admin-room").emit("new-order", {
+                fullName,
+                phone,
+                total,
+                createdAt: newOrder[0]?.createdAt,
+                orderId: newOrder[0]?._id,
+            });
+        } else {
+            console.warn("Socket.IO instance not found on req.io");
+        }
+
         await session.commitTransaction();
         session.endSession();
 
