@@ -7,15 +7,18 @@ import {
     getBrandById,
     updateBrand,
 } from "../controller/brand.controller.js";
-import { authIsAdminMiddleware } from "../middleware/authMiddlewares.js";
+import {
+    authIsAdminMiddleware,
+    authIsManagerMiddleware,
+} from "../middleware/authMiddlewares.js";
 
 const router = express.Router();
 
 router.get("/list", getAllBrand);
-router.get("/list-admin", authIsAdminMiddleware, getAllBrandAdmin);
-router.get("/detail", authIsAdminMiddleware, getBrandById);
-router.post("/create", authIsAdminMiddleware, createBrand);
-router.put("/update", authIsAdminMiddleware, updateBrand);
+router.get("/list-admin", authIsManagerMiddleware, getAllBrandAdmin);
+router.get("/detail", authIsManagerMiddleware, getBrandById);
+router.post("/create", authIsManagerMiddleware, createBrand);
+router.put("/update", authIsManagerMiddleware, updateBrand);
 router.delete("/delete", authIsAdminMiddleware, deleteBrand);
 
 export default router;

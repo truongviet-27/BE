@@ -9,16 +9,17 @@ import {
 } from "../controller/voucher.controller.js";
 import {
     authIsAdminMiddleware,
+    authIsManagerMiddleware,
     authMiddleware,
 } from "../middleware/authMiddlewares.js";
 
 const router = express.Router();
 
-router.get("/list", authIsAdminMiddleware, getAllVouchers);
-router.get("/detail", authIsAdminMiddleware, getVoucherById);
+router.get("/list", authIsManagerMiddleware, getAllVouchers);
+router.get("/detail", authIsManagerMiddleware, getVoucherById);
 router.get("/by-code", authMiddleware, getVoucherByCode);
-router.post("/create", authIsAdminMiddleware, createVoucher);
-router.put("/update", authIsAdminMiddleware, updateVoucher);
+router.post("/create", authIsManagerMiddleware, createVoucher);
+router.put("/update", authIsManagerMiddleware, updateVoucher);
 router.delete("/delete", authIsAdminMiddleware, deleteVoucher);
 
 export default router;

@@ -7,7 +7,7 @@ import Brand from "../model/brand.js";
 import Image from "../model/image.js";
 
 const combineFeatures = ({ code, name, description }) =>
-    `${code} ${name} ${description}`;
+    `${name} ${description}`;
 
 const calculateTfIdf = async (featuresList) => {
     const documentFrequency = new Map();

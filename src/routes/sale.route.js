@@ -7,16 +7,16 @@ import {
     getSaleById,
     updateSale,
 } from "../controller/sale.controller.js";
-import { authIsAdminMiddleware } from "../middleware/authMiddlewares.js";
+import { authIsAdminMiddleware, authIsManagerMiddleware } from "../middleware/authMiddlewares.js";
 
 const router = express.Router();
 
-router.get("/list", authIsAdminMiddleware, getAllSale);
-router.get("/list-admin", authIsAdminMiddleware, getAllSaleAdmin);
+router.get("/list", authIsManagerMiddleware, getAllSale);
+router.get("/list-admin", authIsManagerMiddleware, getAllSaleAdmin);
 
-router.get("/detail", authIsAdminMiddleware, getSaleById);
-router.post("/create", authIsAdminMiddleware, createSale);
-router.put("/update", authIsAdminMiddleware, updateSale);
+router.get("/detail", authIsManagerMiddleware, getSaleById);
+router.post("/create", authIsManagerMiddleware, createSale);
+router.put("/update", authIsManagerMiddleware, updateSale);
 router.delete("/delete", authIsAdminMiddleware, deleteSale);
 
 export default router;

@@ -20,10 +20,12 @@ import {
     getTotalPage,
     getUserById,
     getUserDetail,
+    updateAccountByRoleAdmin,
     updateUserById,
 } from "../controller/user.controller.js";
 import {
     authIsAdminMiddleware,
+    authIsManagerMiddleware,
     authMiddleware,
 } from "../middleware/authMiddlewares.js";
 import validate from "../middleware/validate.js";
@@ -33,24 +35,17 @@ import userDetailSchemaJoi from "../validation/userDetail.validation.js";
 const router = express.Router();
 
 router.post("/create", createUser);
-router.get("/admin/account/find-all", authIsAdminMiddleware, getAllUser);
-router.post(
-    "/admin/create",
-    authIsAdminMiddleware,
-    validate(userDetailSchemaJoi),
-    createAccount
-);
-router.get("/admin/total-page", authIsAdminMiddleware, getTotalPage);
-router.get("/admin/count", authIsAdminMiddleware, countAccount);
+router.get("/admin/account/find-all", authIsManagerMiddleware, getAllUser);
+router.post("/admin/create", authIsAdminMiddleware, createAccount);
+router.get("/admin/total-page", authIsManagerMiddleware, getTotalPage);
+router.get("/admin/count", authIsManagerMiddleware, countAccount);
 
 router.get("/:id", authMiddleware, getUserById);
+router.get("/admin/:id", authMiddleware, getUserById);
 router.delete("/:id", authIsAdminMiddleware, deleteUserById);
-router.put(
-    "/update-profile",
-    authMiddleware,
-    validate(userDetailSchemaJoi),
-    updateUserById
-);
+
+router.put("/admin/update-profile", authIsAdminMiddleware, updateAccountByRoleAdmin);
+router.put("/update-profile", authMiddleware, updateUserById);
 router.get("/admin/account/by-role", authIsAdminMiddleware, getAccountByRole);
 
 router.get("/detail", authMiddleware, getUserDetail);

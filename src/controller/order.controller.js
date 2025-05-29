@@ -442,10 +442,38 @@ const cancelOrder = async (req, res) => {
 };
 
 const countOrderByCategoryName = async (req, res) => {
+    const { year } = req.query;
+
+    let filter = {
+        "orderStatus.code": {
+            $nin: ["CANCELLED", "REFUND"],
+        },
+    };
+
+    if (year) {
+        const startDate = new Date(`${year}-01-01`);
+        const endDate = new Date(`${+year + 1}-01-01`);
+        filter["createdAt"] = {
+            $gte: startDate,
+            $lt: endDate,
+            $type: "date",
+        };
+    }
+
+    console.log(filter, "filter");
     try {
         const result = await Order.aggregate([
             {
-                $match: { isPayment: true },
+                $lookup: {
+                    from: "orderstatuses",
+                    localField: "orderStatus",
+                    foreignField: "_id",
+                    as: "orderStatus",
+                },
+            },
+            { $unwind: "$orderStatus" },
+            {
+                $match: filter,
             },
 
             {
@@ -804,21 +832,37 @@ const amountYear = async (req, res) => {
 
 const reportByProduct = async (req, res) => {
     try {
-        const { page, size, sort } = req.query;
+        const { page, size, sort, year } = req.query;
+        let filter = {
+            "orderStatus.code": {
+                $nin: ["CANCELLED", "REFUND"],
+            },
+        };
+
+        if (year) {
+            const startDate = new Date(`${year}-01-01`);
+            const endDate = new Date(`${+year + 1}-01-01`);
+            filter["order.createdAt"] = {
+                $gte: startDate,
+                $lt: endDate,
+                $type: "date",
+            };
+        }
+
         const result = await OrderDetail.aggregate([
             {
                 $lookup: {
                     from: "attributes",
                     localField: "attribute",
                     foreignField: "_id",
-                    as: "attributeInfo",
+                    as: "attribute",
                 },
             },
-            { $unwind: "$attributeInfo" },
+            { $unwind: "$attribute" },
 
             {
                 $addFields: {
-                    productId: "$attributeInfo.product",
+                    productId: "$attribute.product",
                 },
             },
 
@@ -827,20 +871,29 @@ const reportByProduct = async (req, res) => {
                     from: "orders",
                     localField: "order",
                     foreignField: "_id",
-                    as: "orderInfo",
+                    as: "order",
                 },
             },
-            { $unwind: "$orderInfo" },
+
+            { $unwind: "$order" },
 
             {
-                $match: {
-                    "orderInfo.isPayment": true,
+                $lookup: {
+                    from: "orderstatuses",
+                    localField: "order.orderStatus",
+                    foreignField: "_id",
+                    as: "orderStatus",
                 },
+            },
+            { $unwind: "$orderStatus" },
+            {
+                $match: filter,
             },
 
             {
                 $addFields: {
                     lineTotal: { $multiply: ["$quantity", "$sellPrice"] },
+                    orderId: "$order._id",
                 },
             },
 
@@ -849,8 +902,15 @@ const reportByProduct = async (req, res) => {
                     _id: "$productId",
                     totalQuantity: { $sum: "$quantity" },
                     totalRevenue: { $sum: "$lineTotal" },
+                    uniqueOrderIds: { $addToSet: "$orderId" },
                     orderDetailIds: { $push: "$_id" },
                     orderDetailLength: { $sum: 1 },
+                },
+            },
+
+            {
+                $addFields: {
+                    totalOrders: { $size: "$uniqueOrderIds" },
                 },
             },
 
@@ -859,12 +919,146 @@ const reportByProduct = async (req, res) => {
                     from: "products",
                     localField: "_id",
                     foreignField: "_id",
-                    as: "productInfo",
+                    as: "product",
                 },
             },
+
+            {
+                $lookup: {
+                    from: "images",
+                    localField: "product._id",
+                    foreignField: "product",
+                    as: "imageUrls",
+                },
+            },
+
             {
                 $unwind: {
-                    path: "$productInfo",
+                    path: "$product",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+
+            { $sort: { totalQuantity: -1 } },
+            { $skip: +page * +size },
+            { $limit: +size },
+        ]);
+
+        return successResponseList(res, "", result);
+    } catch (error) {
+        if (error instanceof ErrorCustom) {
+            return errorResponse400(res, error.message);
+        }
+        return errorResponse500(res, "Lỗi server", error.message);
+    }
+};
+
+const reportByProductByYear = async (req, res) => {
+    try {
+        const { page, size, sort, year } = req.query;
+        const startDate = new Date(`${year}-01-01`);
+        const endDate = new Date(`${+year + 1}-01-01`);
+
+        const result = await OrderDetail.aggregate([
+            {
+                $lookup: {
+                    from: "attributes",
+                    localField: "attribute",
+                    foreignField: "_id",
+                    as: "attribute",
+                },
+            },
+            { $unwind: "$attribute" },
+
+            {
+                $addFields: {
+                    productId: "$attribute.product",
+                },
+            },
+
+            {
+                $lookup: {
+                    from: "orders",
+                    localField: "order",
+                    foreignField: "_id",
+                    as: "order",
+                },
+            },
+
+            { $unwind: "$order" },
+
+            {
+                $match: {
+                    "order.createdAt": {
+                        $gte: startDate,
+                        $lt: endDate,
+                        $type: "date",
+                    },
+                },
+            },
+
+            {
+                $lookup: {
+                    from: "orderstatuses",
+                    localField: "order.orderStatus",
+                    foreignField: "_id",
+                    as: "orderStatus",
+                },
+            },
+            { $unwind: "$orderStatus" },
+            {
+                $match: {
+                    "orderStatus.code": {
+                        $nin: ["CANCELLED", "REFUND"],
+                    },
+                },
+            },
+
+            {
+                $addFields: {
+                    lineTotal: { $multiply: ["$quantity", "$sellPrice"] },
+                    orderId: "$order._id",
+                },
+            },
+
+            {
+                $group: {
+                    _id: "$productId",
+                    totalQuantity: { $sum: "$quantity" },
+                    totalRevenue: { $sum: "$lineTotal" },
+                    uniqueOrderIds: { $addToSet: "$orderId" },
+                    orderDetailIds: { $push: "$_id" },
+                    orderDetailLength: { $sum: 1 },
+                },
+            },
+
+            {
+                $addFields: {
+                    totalOrders: { $size: "$uniqueOrderIds" },
+                },
+            },
+
+            {
+                $lookup: {
+                    from: "products",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "product",
+                },
+            },
+
+            {
+                $lookup: {
+                    from: "images",
+                    localField: "product._id",
+                    foreignField: "product",
+                    as: "imageUrls",
+                },
+            },
+
+            {
+                $unwind: {
+                    path: "$product",
                     preserveNullAndEmptyArrays: true,
                 },
             },
@@ -1138,8 +1332,20 @@ const getOrderByOrderYearAndMonth = async (req, res) => {
 
 const getOrderByProduct = async (req, res) => {
     try {
-        const { page, size, id } = req.query;
+        const { page, size, id, year } = req.query;
+        const startDate = new Date(`${year}-01-01`);
+        const endDate = new Date(`${+year + 1}-01-01`);
+
         const result = await Order.aggregate([
+            {
+                $match: {
+                    createdAt: {
+                        $gte: startDate,
+                        $lt: endDate,
+                        $type: "date",
+                    },
+                },
+            },
             {
                 $lookup: {
                     from: "orderstatuses",
@@ -1187,7 +1393,9 @@ const getOrderByProduct = async (req, res) => {
             {
                 $match: {
                     "product._id": new mongoose.Types.ObjectId(id),
-                    isPayment: true,
+                    "orderStatus.code": {
+                        $nin: ["CANCELLED", "REFUND"],
+                    },
                 },
             },
             {
@@ -1237,7 +1445,6 @@ const reportAmountMonth = async (req, res) => {
     const startDate = new Date(`${year}-01-01`);
     const endDate = new Date(`${+year + 1}-01-01`);
 
-    console.log(startDate, endDate, "xxxxxxxxxxxxx");
     try {
         const result = await Order.aggregate([
             {
@@ -1914,6 +2121,7 @@ export {
     reportAmountYear,
     amountYear,
     reportByProduct,
+    reportByProductByYear,
     updateCancel,
     updateProcess,
     updateShip,

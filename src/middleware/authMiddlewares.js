@@ -37,6 +37,36 @@ const authMiddleware = async (req, res, next) => {
     }
 };
 
+const authIsManagerMiddleware = async (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return errorResponse400(res, "Vui lòng đặp nhập!");
+        }
+
+        const token = authHeader.split(" ")[1];
+
+        const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decodedUser?.id);
+
+        if (!user) {
+            return authenticationResponse(res, "Bạn đã hết phiên đăng nhập!");
+        }
+
+        if (user.role !== "ADMIN" && user.role !== "MANAGER") {
+            return authorizationResponse(res, "Bạn không có quyền truy cập");
+        }
+
+        req.user = user;
+        next();
+    } catch (error) {
+        if (error.name === "TokenExpiredError") {
+            return authenticationResponse(res, "Bạn đã hết phiên đăng nhập!");
+        }
+        return errorResponse500(res, "Lỗi server!", error.message);
+    }
+};
+
 const authIsAdminMiddleware = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
@@ -67,4 +97,4 @@ const authIsAdminMiddleware = async (req, res, next) => {
     }
 };
 
-export { authIsAdminMiddleware, authMiddleware };
+export { authIsAdminMiddleware, authIsManagerMiddleware, authMiddleware };

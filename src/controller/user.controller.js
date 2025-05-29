@@ -84,14 +84,23 @@ const createUser = async (req, res) => {
 
 const getAllUser = async (req, res) => {
     try {
-        let { page = 0, size = 10, search, query, roleName } = req.query;
+        const { role } = req.user;
+        let { page = 0, size = 10, search, query, filter } = req.query;
+
+        console.log(role, "userxxxx");
 
         let matchFilter = {};
         let sort = { createdAt: -1 };
 
-        if (roleName) {
-            if (roleName !== "ALL") {
-                matchFilter.role = roleName;
+        if (filter) {
+            if (filter !== "ALL") {
+                matchFilter.role = filter;
+            } else {
+                if (role === "MANAGER") {
+                    matchFilter.role = {
+                        $ne: "ADMIN",
+                    };
+                }
             }
         }
         if (query) {
@@ -220,6 +229,7 @@ const getUserById = async (req, res) => {
             birthday,
             _id: userDetail._id,
             userId: user.toObject()._id,
+            role: user.role,
         });
     } catch (error) {
         if (error instanceof ErrorCustom) {
@@ -315,83 +325,138 @@ const updateUserById = async (req, res) => {
     }
 };
 
-const getAccountByRole = async (req, res) => {
+const updateAccountByRoleAdmin = async (req, res) => {
     try {
-        const { filter } = aqp(req.query);
-        const { page, size, isActive, roleName } = filter;
-        const matchCondition = {};
-        if (roleName) {
-            matchCondition.role = roleName;
-        }
+        const { isActive, avatar, ...rest } = req.body;
+        let result;
+        let avatarUrl = avatar;
 
-        if (typeof isActive === "boolean") {
-            matchCondition.isActive = isActive;
-        }
-        const result = await User.aggregate([
-            { $match: matchCondition },
-            {
-                $lookup: {
-                    from: "userdetails",
-                    localField: "_id",
-                    foreignField: "userId",
-                    as: "userDetail",
-                },
-            },
-            {
-                $unwind: {
-                    path: "$userDetail",
-                    preserveNullAndEmptyArrays: true,
-                },
-            },
-            {
-                $project: {
-                    _id: 1,
-                    email: 1,
-                    username: 1,
-                    role: 1,
-                    isActive: 1,
-                    userDetail: {
-                        _id: 1,
-                        birthday: 1,
-                        avatar: 1,
-                        fullName: 1,
-                        phone: 1,
-                        gender: 1,
-                        address: 1,
-                    },
-                },
-            },
-            { $sort: { createdAt: -1 } },
-            { $skip: page * size },
-            { $limit: size },
-        ]);
-
-        const total = await User.countDocuments([
-            {
-                isActive: isActive,
-            },
-            {
-                roleName: roleName,
-            },
-        ]);
-
-        return successResponseList(
-            res,
-            "Lấy danh sách người dùng thành công!",
-            result,
-            {
-                total,
-                page: page,
-                size: size,
-                totalPages: Math.ceil(total / size),
+        // Chỉ upload nếu là base64
+        if (avatar && avatar.startsWith("data:image")) {
+            try {
+                result = await cloudinary.uploader.upload(avatar, {
+                    folder: "users",
+                });
+                avatarUrl = result.secure_url;
+            } catch (err) {
+                return errorResponse500(
+                    res,
+                    "Lỗi khi upload avatar",
+                    err.message
+                );
             }
-        );
+        }
+
+        const [updateUserDetail, updateUser] = await Promise.all([
+            UserDetail.findByIdAndUpdate(
+                {
+                    _id: new mongoose.Types.ObjectId(req.body._id),
+                },
+                {
+                    ...rest,
+                    avatar: avatarUrl,
+                },
+                { upsert: true }
+            ),
+            User.findByIdAndUpdate(
+                {
+                    _id: new mongoose.Types.ObjectId(req.body.userId),
+                },
+                {
+                    email: req.body.email,
+                    isActive: isActive,
+                },
+                { upsert: true }
+            ),
+        ]);
+
+        if (updateUserDetail && updateUser) {
+            return successResponse(res, "Thành công!");
+        } else {
+            return errorResponse400(res, "Người dùng không tồn tại!");
+        }
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);
         }
         return errorResponse500(res, "Lỗi server", error.message);
     }
+};
+
+const getAccountByRole = async (req, res) => {
+    // try {
+    //     const { filter } = aqp(req.query);
+    //     const { page, size, isActive, roleName } = filter;
+    //     const matchCondition = {};
+    //     if (roleName) {
+    //         matchCondition.role = roleName;
+    //     }
+    //     if (typeof isActive === "boolean") {
+    //         matchCondition.isActive = isActive;
+    //     }
+    //     const result = await User.aggregate([
+    //         { $match: matchCondition },
+    //         {
+    //             $lookup: {
+    //                 from: "userdetails",
+    //                 localField: "_id",
+    //                 foreignField: "userId",
+    //                 as: "userDetail",
+    //             },
+    //         },
+    //         {
+    //             $unwind: {
+    //                 path: "$userDetail",
+    //                 preserveNullAndEmptyArrays: true,
+    //             },
+    //         },
+    //         {
+    //             $project: {
+    //                 _id: 1,
+    //                 email: 1,
+    //                 username: 1,
+    //                 role: 1,
+    //                 isActive: 1,
+    //                 userDetail: {
+    //                     _id: 1,
+    //                     birthday: 1,
+    //                     avatar: 1,
+    //                     fullName: 1,
+    //                     phone: 1,
+    //                     gender: 1,
+    //                     address: 1,
+    //                 },
+    //             },
+    //         },
+    //         { $sort: { createdAt: -1 } },
+    //         { $skip: page * size },
+    //         { $limit: size },
+    //     ]);
+    //     const total = await User.countDocuments([
+    //         {
+    //             isActive: isActive,
+    //         },
+    //         {
+    //             roleName: roleName,
+    //         },
+    //     ]);
+    //     return successResponseList(
+    //         res,
+    //         "Lấy danh sách người dùng thành công!",
+    //         result,
+    //         {
+    //             total,
+    //             page: page,
+    //             size: size,
+    //             totalPages: Math.ceil(total / size),
+    //         }
+    //     );
+    // } catch (error) {
+    //     if (error instanceof ErrorCustom) {
+    //         return errorResponse400(res, error.message);
+    //     }
+    //     return errorResponse500(res, "Lỗi server", error.message);
+    // }
 };
 
 const createAccount = async (req, res) => {
@@ -406,6 +471,7 @@ const createAccount = async (req, res) => {
             gender,
             address,
             birthday,
+            role,
         } = req.body;
         const existingUser = await UserDetail.findOne({
             email,
@@ -421,6 +487,7 @@ const createAccount = async (req, res) => {
             username,
             email,
             password: hashedPassword,
+            role,
         });
 
         await user.save();
@@ -450,7 +517,16 @@ const createAccount = async (req, res) => {
 const getTotalPage = async (req, res) => {};
 const countAccount = async (req, res) => {
     try {
-        const users = await User.find({});
+        const { role } = req.user;
+        let matchFilter = {};
+
+        if (role === "MANAGER") {
+            matchFilter.role = {
+                $nin: ["ADMIN"],
+            };
+        }
+
+        const users = await User.find(matchFilter);
 
         return successResponse(res, "", users.length);
     } catch (error) {
@@ -472,4 +548,5 @@ export {
     createAccount,
     getTotalPage,
     countAccount,
+    updateAccountByRoleAdmin,
 };
