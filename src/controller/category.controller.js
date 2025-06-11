@@ -141,7 +141,7 @@ export const createCategory = async (req, res) => {
 export const updateCategory = async (req, res) => {
     try {
         const { _id } = req.body;
-        validateMongoDbId(id);
+        validateMongoDbId(_id);
         const updatedCategory = await Category.findByIdAndUpdate(
             _id,
             req.body,
@@ -169,13 +169,12 @@ export const deleteCategory = async (req, res) => {
         validateMongoDbId(id);
         const category = await Category.findById(id);
         if (!category || category.deletedAt) {
-            return successResponse(res, "Không tìm thấy danh mục");
+            return successResponse(res, "Không tìm thấy danh mục", false);
         }
 
-        category.deletedAt = new Date();
-        await category.save();
+        await Category.deleteOne({ _id: id });
 
-        return res.json({ success: true, message: "Danh mục đã được xóa mềm" });
+        return successResponse(res, "Danh mục đã được xóa!", true);
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);

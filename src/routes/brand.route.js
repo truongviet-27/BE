@@ -19,6 +19,6 @@ router.get("/list-admin", authIsManagerMiddleware, getAllBrandAdmin);
 router.get("/detail", authIsManagerMiddleware, getBrandById);
 router.post("/create", authIsManagerMiddleware, createBrand);
 router.put("/update", authIsManagerMiddleware, updateBrand);
-router.delete("/delete", authIsAdminMiddleware, deleteBrand);
+router.delete("/delete/:id", authIsAdminMiddleware, deleteBrand);
 
 export default router;

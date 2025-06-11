@@ -21,7 +21,16 @@ const authMiddleware = async (req, res, next) => {
 
     try {
         const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decodedUser?.id);
+        const user = await User.findOne({
+            $and: [
+                {
+                    _id: decodedUser?.id,
+                },
+                {
+                    isActive: true,
+                },
+            ],
+        });
 
         if (!user) {
             return authenticationResponse(res, "Bạn đã hết phiên đăng nhập!");
@@ -47,7 +56,18 @@ const authIsManagerMiddleware = async (req, res, next) => {
         const token = authHeader.split(" ")[1];
 
         const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decodedUser?.id);
+        const user = await User.findOne({
+            $and: [
+                {
+                    _id: decodedUser?.id,
+                },
+                {
+                    isActive: true,
+                },
+            ],
+        });
+
+        console.log(user, "userxxx");
 
         if (!user) {
             return authenticationResponse(res, "Bạn đã hết phiên đăng nhập!");
@@ -77,9 +97,18 @@ const authIsAdminMiddleware = async (req, res, next) => {
         const token = authHeader.split(" ")[1];
 
         const decodedUser = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decodedUser?.id);
+        const user = await User.findOne({
+            $and: [
+                {
+                    _id: decodedUser?.id,
+                },
+                {
+                    isActive: true,
+                },
+            ],
+        });
 
-        if (!user) {
+        if (!user || !user.isActive) {
             return authenticationResponse(res, "Bạn đã hết phiên đăng nhập!");
         }
 

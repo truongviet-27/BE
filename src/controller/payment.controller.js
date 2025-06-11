@@ -103,15 +103,15 @@ export const handlePaymentResponse = async (req, res) => {
             return errorResponse400(res, "Không tìm thấy đơn hàng", false);
         }
         let redirectUrl = "";
-        if (vnp_ResponseCode !== "00") {
-            order.isPayment = false;
-            redirectUrl = `http://localhost:5173/order/${vnp_TxnRef}`;
-        } else {
+        if (vnp_ResponseCode == "00") {
             const orderStatus = await OrderStatus.findOne({
                 code: "PROCESSING",
             });
             order.orderStatus = orderStatus._id;
             order.isPayment = true;
+            redirectUrl = `http://localhost:5173/order`;
+        } else {
+            order.isPayment = false;
             redirectUrl = `http://localhost:5173/order/detail/${vnp_TxnRef}`;
         }
         await order.save();

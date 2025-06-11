@@ -249,15 +249,17 @@ const deleteUserById = async (req, res) => {
     try {
         const { id } = req.params;
         validateMongoDbId(id);
-        const deleteUserById = await User.findByIdAndDelete({ _id: id });
-        const deleteUserDetailById = await UserDetail.findByIdAndDelete({
+        const deleteUserById = await User.findOneAndDelete({
+            _id: id,
+        });
+        const deleteUserDetailById = await UserDetail.findOneAndDelete({
             userId: id,
         });
 
         if (deleteUserById && deleteUserDetailById) {
-            return successResponse(res, "Thành công!");
+            return successResponse(res, "Thành công!", true);
         } else {
-            return errorResponse400(res, "Người dùng không tồn tại!");
+            return errorResponse400(res, "Người dùng không tồn tại!", false);
         }
     } catch (error) {
         if (error instanceof ErrorCustom) {

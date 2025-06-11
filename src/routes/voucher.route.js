@@ -20,6 +20,6 @@ router.get("/detail", authIsManagerMiddleware, getVoucherById);
 router.get("/by-code", authMiddleware, getVoucherByCode);
 router.post("/create", authIsManagerMiddleware, createVoucher);
 router.put("/update", authIsManagerMiddleware, updateVoucher);
-router.delete("/delete", authIsAdminMiddleware, deleteVoucher);
+router.delete("/delete/:id", authIsAdminMiddleware, deleteVoucher);
 
 export default router;

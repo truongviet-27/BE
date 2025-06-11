@@ -48,7 +48,7 @@ router.put(
     authIsManagerMiddleware,
     updateProduct
 );
-router.delete("/delete", authIsAdminMiddleware, deleteProduct);
+router.delete("/delete/:id", authIsAdminMiddleware, deleteProduct);
 router.get("/:id", getProductById);
 
 export default router;

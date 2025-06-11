@@ -122,13 +122,9 @@ const deleteBrand = async (req, res) => {
     try {
         const { id } = req.params;
         validateMongoDbId(id);
-        const brand = await Brand.findByIdAndUpdate(
-            id,
-            {
-                deletedAt: new Date(),
-            },
-            { new: true }
-        );
+        const brand = await Brand.findByIdAndDelete({
+            _id: id,
+        });
         if (!brand) {
             return notFoundResponse(
                 res,
@@ -137,7 +133,7 @@ const deleteBrand = async (req, res) => {
                 404
             );
         }
-        return successResponse(res, "Xóa thương hiệu thành công!", brand);
+        return successResponse(res, "Xóa thương hiệu thành công!", true);
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);

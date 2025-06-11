@@ -7,7 +7,7 @@ import Brand from "../model/brand.js";
 import Image from "../model/image.js";
 
 const combineFeatures = ({ code, name, description }) =>
-    `${name} ${description}`;
+    `${code} ${name} ${description}`;
 
 const calculateTfIdf = async (featuresList) => {
     const documentFrequency = new Map();
@@ -33,7 +33,6 @@ const calculateTfIdf = async (featuresList) => {
 
         termFrequencyList.push(termFrequency);
     });
-    console.log(termFrequencyList, "termFrequencyList");
 
     const totalDocs = featuresList.length;
     const tfidfMatrix = termFrequencyList.map((termFrequency) => {
@@ -93,7 +92,19 @@ const getRecommendationsService = async (productId, page = 0, size = 5) => {
 
     console.log(product, "productxx");
 
-    const products = await Product.find({});
+    const products = await Product.aggregate([
+        {
+            $match: {},
+        },
+        {
+            $lookup: {
+                from: "product_user_likes",
+                localField: "_id",
+                foreignField: "product",
+                as: "likeQuantity",
+            },
+        },
+    ]);
     const featuresList = products.map((product) =>
         combineFeatures({
             code: product.code,
@@ -120,13 +131,15 @@ const getRecommendationsService = async (productId, page = 0, size = 5) => {
         similarityMatrix[indexProduct].map((score, i) => [i, score])
     );
 
+    
+
     const sortedProductIndices = [...similarProducts.entries()]
         .sort(([_, scoreA], [__, scoreB]) => scoreB - scoreA)
         .map(([index]) => index);
 
     const productList = [];
     const productSimilarityMap = new Map();
-    for (let i = 1; i < Math.min(5, sortedProductIndices.length); i++) {
+    for (let i = 1; i < Math.min(6, sortedProductIndices.length); i++) {
         const product = products[sortedProductIndices[i]];
         const cosineValue = similarProducts.get(sortedProductIndices[i]);
         productList.push(product);
@@ -147,9 +160,22 @@ const getRecommendationsService = async (productId, page = 0, size = 5) => {
 
     console.log(attributes, "attributes");
 
-    const attributeMap = new Map(
-        attributes.map((attr) => [attr?.product?.toString(), attr])
-    );
+    const attributeMap = new Map();
+
+    attributes.forEach((attr) => {
+        const key = attr?.product?.toString();
+        if (!attributeMap.has(key)) {
+            attributeMap.set(key, []);
+        }
+        attributeMap.get(key).push({
+            _id: attr._id,
+            price: attr.price,
+            size: attr.size,
+            stock: attr.stock,
+            cache: attr.cache,
+            product: attr.product,
+        });
+    });
 
     console.log(attributeMap, "attributeMap");
 
@@ -162,17 +188,28 @@ const getRecommendationsService = async (productId, page = 0, size = 5) => {
     console.log(productList, paginatedProducts, "paginatedProducts");
 
     const productDtos = paginatedProducts.map(
-        ({ _id, name, code, view, description, brand, sale, isActive }) => ({
+        ({
+            _id,
+            name,
+            code,
+            view,
+            description,
+            brand,
+            sale,
+            isActive,
+            likeQuantity,
+        }) => ({
             _id,
             code,
             name,
             description,
             image: imageMap.get(_id?.toString())?.url ?? "",
             isActive,
-            attribute: attributeMap.get(_id?.toString()),
+            attributes: attributeMap.get(_id?.toString()),
             brand: brandMap.get(brand?.toString()),
             view,
             sale: saleMap.get(sale?.toString()),
+            likeQuantity: likeQuantity.length ?? 0,
             similarity: productSimilarityMap.get(_id?.toString()) ?? 0,
         })
     );

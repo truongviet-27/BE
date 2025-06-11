@@ -17,10 +17,10 @@ const loginUser = async (req, res) => {
     try {
         const { username, password } = req.body;
         const existingUser = await User.findOne({
-            $or: [
-                { username: username },
+            $and: [
+                { isActive: true },
                 {
-                    email: username,
+                    $or: [{ username: username }, { email: username }],
                 },
             ],
         });

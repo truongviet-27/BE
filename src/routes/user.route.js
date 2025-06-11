@@ -39,7 +39,7 @@ router.get("/admin/count", authIsManagerMiddleware, countAccount);
 
 router.get("/:id", authMiddleware, getUserById);
 router.get("/admin/:id", authMiddleware, getUserById);
-router.delete("/:id", authIsAdminMiddleware, deleteUserById);
+router.delete("/delete/:id", authIsAdminMiddleware, deleteUserById);
 
 router.put("/admin/update-profile", authIsAdminMiddleware, updateAccountByRoleAdmin);
 router.put("/update-profile", authMiddleware, updateUserById);

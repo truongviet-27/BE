@@ -10,6 +10,7 @@ const orderSchema = new mongoose.Schema(
         note: { type: String },
         total: { type: Number, required: true },
         isPayment: { type: Boolean, default: false },
+        paymentDate: { type: Date },
         shipment: { type: mongoose.Schema.Types.ObjectId, ref: "shipment" },
         payment: { type: String, required: true },
         shipDate: { type: Date },

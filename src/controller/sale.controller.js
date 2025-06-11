@@ -9,7 +9,10 @@ import {
     successResponseList,
 } from "../utils/responseHandler.js";
 import { ErrorCustom } from "../helper/ErrorCustom.js";
-import { getAllSaleAdminService, getAllSaleService } from "../service/sale.service.js";
+import {
+    getAllSaleAdminService,
+    getAllSaleService,
+} from "../service/sale.service.js";
 
 export const getAllSale = async (req, res) => {
     try {
@@ -132,9 +135,9 @@ export const deleteSale = async (req, res) => {
         validateMongoDbId(id);
         const deletedSale = await Sale.findByIdAndDelete(id);
         if (!deletedSale) {
-            return notFoundResponse(res, "Không tìm thấy đơn hàng", null, 404);
+            return notFoundResponse(res, "Không tìm thấy giảm giá", null, 404);
         }
-        return successResponse(res, "Xóa đơn hàng thành công!");
+        return successResponse(res, "Xóa giảm giá thành công!");
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);

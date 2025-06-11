@@ -1,6 +1,8 @@
 import aqp from "api-query-params";
 import Voucher from "../model/voucher.js";
 import validateMongoDbId from "../utils/validateMongodbId.js";
+import { ErrorCustom } from "../helper/ErrorCustom.js";
+import mongoose from "mongoose";
 
 const getAllVouchersService = async (queryParams) => {
     const { filter } = aqp(queryParams);
@@ -104,7 +106,9 @@ const updateVoucherService = async (data) => {
 const deleteVoucherService = async (id) => {
     validateMongoDbId(id);
 
-    const voucher = await Voucher.findById(id);
+    const voucher = await Voucher.findOne({
+        _id: new mongoose.Types.ObjectId(id),
+    });
     if (!voucher) {
         throw new ErrorCustom("Không tìm thấy voucher");
     }
