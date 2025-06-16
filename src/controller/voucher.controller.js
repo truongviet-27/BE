@@ -1,8 +1,8 @@
 import { ErrorCustom } from "../helper/ErrorCustom.js";
-import Voucher from "../model/voucher.js";
 import {
     createVoucherService,
     deleteVoucherService,
+    getAllVouchersAdminService,
     getAllVouchersService,
     getVoucherByCodeService,
     getVoucherByIdService,
@@ -14,7 +14,23 @@ import {
     successResponse,
     successResponseList,
 } from "../utils/responseHandler.js";
-import validateMongoDbId from "../utils/validateMongodbId.js";
+
+export const getAllVouchersAdmin = async (req, res) => {
+    try {
+        const { vouchers, pagination } = await getAllVouchersAdminService(
+            req.query
+        );
+
+        return successResponseList(
+            res,
+            "Lấy danh sách voucher thành công!",
+            vouchers,
+            pagination
+        );
+    } catch (error) {
+        return errorResponse500(res, "Lỗi server", error.message);
+    }
+};
 
 export const getAllVouchers = async (req, res) => {
     try {

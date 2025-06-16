@@ -6,7 +6,6 @@ import {
     loginUser,
     logout,
     resetPassword,
-    sendOtp,
     sendOtpResetPassword,
     verifyOtp,
 } from "../controller/auth.controller.js";
@@ -17,7 +16,6 @@ import {
     deleteUserById,
     getAccountByRole,
     getAllUser,
-    getTotalPage,
     getUserById,
     getUserDetail,
     updateAccountByRoleAdmin,
@@ -34,7 +32,7 @@ const router = express.Router();
 router.post("/create", createUser);
 router.get("/admin/account/find-all", authIsManagerMiddleware, getAllUser);
 router.post("/admin/create", authIsAdminMiddleware, createAccount);
-router.get("/admin/total-page", authIsManagerMiddleware, getTotalPage);
+// router.get("/admin/total-page", authIsManagerMiddleware, getTotalPage);
 router.get("/admin/count", authIsManagerMiddleware, countAccount);
 
 router.get("/:id", authMiddleware, getUserById);
@@ -51,7 +49,7 @@ router.post("/forgot-password", forgotPassword);
 router.put("/reset-password", resetPassword);
 router.post("/refresh-token", handleRefreshToken);
 router.put("/change-password", changePassword);
-router.post("/send-otp", sendOtp);
+// router.post("/send-otp", sendOtp);
 router.post("/verify-otp", verifyOtp);
 router.post("/send-otp-reset", sendOtpResetPassword);
 

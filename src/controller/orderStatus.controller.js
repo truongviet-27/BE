@@ -1,9 +1,11 @@
+import { ErrorCustom } from "../helper/ErrorCustom.js";
 import OrderStatus from "../model/orderStatus.js";
+import { createOrderStatusService, deleteOrderStatusService, getAllOrderStatusService, getOrderStatusByIdService, updateOrderStatusService } from "../service/orderStatus.service.js";
 import validateMongoDbId from "../utils/validateMongodbId";
 
 export const getAllOrderStatus = async (req, res) => {
     try {
-        const orderStatus = await OrderStatus.find({ deletedAt: null });
+        const orderStatus = await getAllOrderStatusService();
         return successResponse(
             res,
             "Lấy danh sách trạng thái đơn hàng thành công!",
@@ -17,8 +19,7 @@ export const getAllOrderStatus = async (req, res) => {
 export const getOrderStatusById = async (req, res) => {
     try {
         const { id } = req.params;
-        validateMongoDbId(id);
-        const orderStatus = await OrderStatus.findById(id);
+        const orderStatus = await getOrderStatusByIdService(id);
         return successResponse(
             res,
             "Lấy trạng thái đơn hàng thành công!",
@@ -34,7 +35,7 @@ export const getOrderStatusById = async (req, res) => {
 
 export const createOrderStatus = async (req, res) => {
     try {
-        const newOrderStatus = await OrderStatus.create(req.body);
+        const newOrderStatus = await createOrderStatusService(req.body);
         return successResponse(
             res,
             "Tạo trạng thái đơn hàng thành công!",
@@ -48,18 +49,12 @@ export const createOrderStatus = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        validateMongoDbId(id);
-        const updatedOrderStatus = await OrderStatus.findByIdAndUpdate(
-            id,
-            req.body,
-            {
-                new: true,
-            }
-        );
+        const updated = await updateOrderStatusService(id, req.body);
+
         return successResponse(
             res,
             "Cập nhật trạng thái đơn hàng thành công!",
-            updatedOrderStatus
+            updated
         );
     } catch (error) {
         if (error instanceof ErrorCustom) {
@@ -72,16 +67,13 @@ export const updateOrderStatus = async (req, res) => {
 export const deleteOrderStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        validateMongoDbId(id);
-        const orderStatus = await OrderStatus.findById(id);
-        if (!orderStatus || orderStatus.deletedAt) {
-            return notFoundResponse(
-                res,
-                "Không tìm thấy trạng thái đơn hàng",
-                null,
-                404
-            );
+        const result = await deleteOrderStatusService(id);
+
+        if (!result.success) {
+            return notFoundResponse(res, result.message, null, 404);
         }
+
+        return successResponse(res, result.message, true);
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);

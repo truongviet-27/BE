@@ -8,37 +8,16 @@ import {
 } from "../utils/responseHandler.js";
 import validateMongoDbId from "../utils/validateMongodbId.js";
 import { ErrorCustom } from "../helper/ErrorCustom.js";
+import { createCategoryService, deleteCategoryService, getAllCategoriesService, getCategoryAdminService, getCategoryByIdService, updateCategoryService } from "../service/category.service.js";
 
 export const getAllCategories = async (req, res) => {
     try {
-        const { filter } = aqp(req.query);
-        const { page, size, isActive } = filter;
-        const [categories, total] = await Promise.all([
-            Category.aggregate([
-                {
-                    $match: {
-                        isActive: true,
-                    },
-                },
-                {
-                    $skip: page * size,
-                },
-                {
-                    $limit: size,
-                },
-            ]),
-            Category.countDocuments({ isActive: true }),
-        ]);
+        const { categories, pagination } = await getAllCategoriesService(req.query);
         return successResponseList(
             res,
             "Lấy danh sách danh mục thành công!",
             categories,
-            {
-                total,
-                page: page,
-                size: size,
-                totalPages: Math.ceil(total / size),
-            }
+            pagination
         );
     } catch (error) {
         if (error instanceof ErrorCustom) {
@@ -50,53 +29,13 @@ export const getAllCategories = async (req, res) => {
 
 export const getCategoryAdmin = async (req, res) => {
     try {
-        const { filter } = aqp(req.query);
-        const { page, size } = filter;
-        const { query, search } = req.query;
+        const { categories, pagination } = await getCategoryAdminService(req.query);
 
-        let matchFilter = {};
-        let sort = { createdAt: -1 };
-
-        if (query) {
-            let [key, value] = query.split("-");
-
-            if (key === "name") {
-                sort = { name: value === "asc" ? 1 : -1 };
-            } else {
-                if (key && value) {
-                    matchFilter[key] = value === "true" ? true : false;
-                }
-            }
-        }
-
-        if (search) {
-            matchFilter["$or"] = [{ name: { $regex: search, $options: "i" } }];
-        }
-        const [categories, total] = await Promise.all([
-            Category.aggregate([
-                {
-                    $match: matchFilter,
-                },
-                { $sort: sort },
-                {
-                    $skip: page * size,
-                },
-                {
-                    $limit: size,
-                },
-            ]),
-            Category.countDocuments({}),
-        ]);
         return successResponseList(
             res,
             "Lấy danh sách danh mục thành công!",
             categories,
-            {
-                total,
-                page: page,
-                size: size,
-                totalPages: Math.ceil(total / size),
-            }
+            pagination
         );
     } catch (error) {
         if (error instanceof ErrorCustom) {
@@ -105,15 +44,13 @@ export const getCategoryAdmin = async (req, res) => {
         return errorResponse500(res, "Lỗi server", error.message);
     }
 };
+
 export const getCategoryById = async (req, res) => {
     try {
         const { id } = req.query;
-        validateMongoDbId(id);
-        const category = await Category.findById(id).select(
-            "-updatedAt -__v -createdAt"
-        );
+        const category = await getCategoryByIdService(id);
 
-        if (!category || category.deletedAt) {
+        if (!category) {
             return successResponse(res, "Không tìm thấy danh mục");
         }
 
@@ -128,8 +65,8 @@ export const getCategoryById = async (req, res) => {
 
 export const createCategory = async (req, res) => {
     try {
-        const newCategory = await Category.create(req.body);
-        return res.status(201).json({ success: true, data: newCategory });
+        const newCategory = await createCategoryService(req.body);
+        return res.status(200).json({ success: true, data: newCategory });
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);
@@ -138,17 +75,10 @@ export const createCategory = async (req, res) => {
     }
 };
 
+
 export const updateCategory = async (req, res) => {
     try {
-        const { _id } = req.body;
-        validateMongoDbId(_id);
-        const updatedCategory = await Category.findByIdAndUpdate(
-            _id,
-            req.body,
-            {
-                new: true,
-            }
-        );
+        const updatedCategory = await updateCategoryService(req.body);
 
         if (!updatedCategory) {
             return successResponse(res, "Không tìm thấy danh mục");
@@ -166,15 +96,9 @@ export const updateCategory = async (req, res) => {
 export const deleteCategory = async (req, res) => {
     try {
         const { id } = req.params;
-        validateMongoDbId(id);
-        const category = await Category.findById(id);
-        if (!category || category.deletedAt) {
-            return successResponse(res, "Không tìm thấy danh mục", false);
-        }
+        const result = await deleteCategoryService(id);
 
-        await Category.deleteOne({ _id: id });
-
-        return successResponse(res, "Danh mục đã được xóa!", true);
+        return successResponse(res, result.message, result.success);
     } catch (error) {
         if (error instanceof ErrorCustom) {
             return errorResponse400(res, error.message);

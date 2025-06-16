@@ -156,7 +156,7 @@ const getReviewByOrderDetailIdService = async (orderDetailId) => {
     });
 
     if (!review) {
-        throw new ErrorCustom("");
+        return null;
     }
 
     return review;

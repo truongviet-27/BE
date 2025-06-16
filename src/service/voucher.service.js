@@ -4,7 +4,7 @@ import validateMongoDbId from "../utils/validateMongodbId.js";
 import { ErrorCustom } from "../helper/ErrorCustom.js";
 import mongoose from "mongoose";
 
-const getAllVouchersService = async (queryParams) => {
+const getAllVouchersAdminService = async (queryParams) => {
     const { filter } = aqp(queryParams);
     let { page = 0, size = 10 } = filter;
     const { query, search } = queryParams;
@@ -34,6 +34,39 @@ const getAllVouchersService = async (queryParams) => {
             },
         ];
     }
+
+    const [vouchers, total] = await Promise.all([
+        Voucher.aggregate([
+            { $match: matchFilter },
+            { $sort: sort },
+            { $skip: page * size },
+            { $limit: size },
+        ]),
+        Voucher.countDocuments(matchFilter),
+    ]);
+
+    return {
+        vouchers,
+        pagination: {
+            total,
+            page,
+            size,
+            totalPages: Math.ceil(total / size),
+        },
+    };
+};
+
+const getAllVouchersService = async (queryParams) => {
+    const { filter } = aqp(queryParams);
+    let { page = 0, size = 10, isActive = true } = filter;
+
+    page = parseInt(page);
+    size = parseInt(size);
+
+    let matchFilter = {
+        isActive,
+    };
+    let sort = { createdAt: -1 };
 
     const [vouchers, total] = await Promise.all([
         Voucher.aggregate([
@@ -146,6 +179,7 @@ const getVoucherByCodeService = async (code) => {
 };
 
 export {
+    getAllVouchersAdminService,
     getAllVouchersService,
     getVoucherByIdService,
     createVoucherService,

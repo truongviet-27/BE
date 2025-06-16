@@ -1,5 +1,5 @@
 import { ErrorCustom } from "../helper/ErrorCustom.js";
-import Shipment from "../model/shipment.js";
+import { getAllShipmentsService } from "../service/shipment.service.js";
 import {
     errorResponse400,
     errorResponse500,
@@ -10,7 +10,7 @@ export const getAllShipments = async (req, res) => {
     try {
         const { isActive = true } = req.query;
 
-        const shipments = await Shipment.find({ isActive }).sort({ name: -1 });
+        const shipments = await getAllShipmentsService(isActive);
 
         return successResponseList(
             res,

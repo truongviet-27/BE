@@ -80,6 +80,9 @@ export const getReviewAttributeByOrderDetailId = async (req, res) => {
         const { orderDetailId } = req.query;
         const review = await getReviewByOrderDetailIdService(orderDetailId);
 
+        if (!review) {
+            return successResponse(res, "", null);
+        }
         return successResponse(res, "", review);
     } catch (error) {
         if (error instanceof ErrorCustom) {

@@ -3,6 +3,7 @@ import {
     createVoucher,
     deleteVoucher,
     getAllVouchers,
+    getAllVouchersAdmin,
     getVoucherByCode,
     getVoucherById,
     updateVoucher,
@@ -15,7 +16,8 @@ import {
 
 const router = express.Router();
 
-router.get("/list", authIsManagerMiddleware, getAllVouchers);
+router.get("/list-admin", authIsManagerMiddleware, getAllVouchersAdmin);
+router.get("/list", getAllVouchers);
 router.get("/detail", authIsManagerMiddleware, getVoucherById);
 router.get("/by-code", authMiddleware, getVoucherByCode);
 router.post("/create", authIsManagerMiddleware, createVoucher);
