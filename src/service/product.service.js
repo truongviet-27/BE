@@ -1226,6 +1226,14 @@ const filterProductsService = async ({
         { $match: filter },
         {
             $lookup: {
+                from: "images",
+                localField: "_id",
+                foreignField: "product",
+                as: "imageUrls",
+            },
+        },
+        {
+            $lookup: {
                 from: "brands",
                 localField: "brand",
                 foreignField: "_id",
@@ -1317,6 +1325,10 @@ const filterProductsService = async ({
                     cache: 1,
                 },
                 likeQuantity: { _id: 1 },
+                imageUrls: {
+                    _id: 1,
+                    url: 1,
+                },
             },
         },
         { $sort: { createdAt: -1 } },

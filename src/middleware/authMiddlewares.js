@@ -67,8 +67,6 @@ const authIsManagerMiddleware = async (req, res, next) => {
             ],
         });
 
-        console.log(user, "userxxx");
-
         if (!user) {
             return authenticationResponse(res, "Bạn đã hết phiên đăng nhập!");
         }

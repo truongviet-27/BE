@@ -318,11 +318,11 @@ export const cancelOrderService = async ({
 
         const order = orders[0];
         if (!order) {
-            throw new Error("Đơn hàng không tồn tại!");
+            throw new ErrorCustom("Đơn hàng không tồn tại!");
         }
 
         if (!orderStatus) {
-            throw new Error("Trạng thái đơn hàng không tồn tại!");
+            throw new ErrorCustom("Trạng thái đơn hàng không tồn tại!");
         }
 
         // Hoàn lại hàng
@@ -1698,7 +1698,7 @@ export const getAllOrdersWithPagination = async (query) => {
         const fromDate = new Date(from);
         const toDate = new Date(to);
         if (fromDate > toDate) {
-            throw new Error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
+            throw new ErrorCustom("Ngày bắt đầu không được lớn hơn ngày kết thúc");
         }
         fromDate.setHours(0, 0, 0, 0);
         toDate.setHours(23, 59, 59, 999);

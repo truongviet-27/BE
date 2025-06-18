@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import CartItem from "../model/cartItem.js";
 import Attribute from "../model/attribute.js";
+import { ErrorCustom } from "../helper/ErrorCustom.js";
 
 const modifyCartItemFromNotUserFromDetailService = async (
     user,
@@ -63,7 +64,7 @@ const modifyCartItemFromNotUserFromDetailService = async (
             }
         }
     } catch (error) {
-        throw new Error(error.message);
+        throw new ErrorCustom(error.message);
     }
 };
 

@@ -53,10 +53,10 @@ const startServer = async () => {
     try {
         await dbConnect();
         app.listen(PORT, () => {
-            console.log(`🚀 Server is running at http://localhost:${PORT}`);
+            console.log(`Server is running at http://localhost:${PORT}`);
         });
     } catch (error) {
-        console.error("❌ Database connection failed:", error.message);
+        console.error("Database connection failed:", error.message);
         process.exit(1);
     }
 };

@@ -52,7 +52,7 @@ const verifyOtpService = async (username, otp) => {
     });
 
     if (!user) {
-        throw new Error("Không tìm thấy người dùng!");
+        throw new ErrorCustom("Không tìm thấy người dùng!");
     }
 
     if (user.verifyOtp === "" || user.verifyOtp !== otp) {
@@ -86,7 +86,7 @@ const logoutService = async (userId) => {
     const user = await User.findById(userId);
 
     if (!user) {
-        throw new Error("Không tìm thấy người dùng!");
+        throw new ErrorCustom("Không tìm thấy người dùng!");
     }
 
     user.verifyOtp = "";
