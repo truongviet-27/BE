@@ -19,6 +19,8 @@ import {
     reportAmountYear,
     reportByProduct,
     reportByProductByYear,
+    reportInvestmentMonth,
+    reportInvestmentYear,
     updateCancel,
     updateOrderRefund,
     updateOrderReturn,
@@ -50,6 +52,8 @@ router.get(
 
 router.get("/count", authIsManagerMiddleware, countOrder);
 router.get("/synthesis/year", authIsManagerMiddleware, reportAmountYear);
+router.get("/synthesis/year/investment", authIsManagerMiddleware, reportInvestmentYear);
+
 router.get("/synthesis/amount-year", authIsManagerMiddleware, amountYear);
 
 router.get("/synthesis/product", authIsManagerMiddleware, reportByProduct);
@@ -78,6 +82,11 @@ router.get(
     "/synthesis/amount-month",
     authIsManagerMiddleware,
     reportAmountMonth
+);
+router.get(
+    "/synthesis/investment-month",
+    authIsManagerMiddleware,
+    reportInvestmentMonth
 );
 
 router.post("/update-order-return", authIsManagerMiddleware, updateOrderReturn);

@@ -747,7 +747,31 @@ const getAllProductByBrandService = async (queryParams) => {
 
 const countProductService = async () => {
     const count = await Product.countDocuments();
-    return count;
+    const products = await Product.aggregate([
+        { $match: { isActive: true } },
+        {
+            $lookup: {
+                from: "attributes",
+                localField: "_id",
+                foreignField: "product",
+                as: "attributes",
+            },
+        },
+    ]);
+    const totalStock = products.reduce((acc, item) => {
+        return acc + item.attributes.reduce((sum, attr) => sum + attr.stock, 0);
+    }, 0);
+
+    const totalCache = products.reduce((acc, item) => {
+        return acc + item.attributes.reduce((sum, attr) => sum + attr.cache, 0);
+    }, 0);
+
+    return {
+        totalProduct: count,
+        totalCache,
+        totalStock,
+        totalSold: totalCache - totalStock,
+    };
 };
 
 const searchByKeywordService = async (query) => {

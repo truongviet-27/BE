@@ -28,9 +28,11 @@ import {
     getOrderDetailByOrderIdService,
     getOrdersByProductService,
     getOrdersByStatusAndDateService,
+    reportAmountInvestmentYearService,
     reportAmountYearService,
     reportByProductByYearService,
     reportByProductService,
+    reportInvestmentByMonthService,
     reportRevenueByMonthService,
     updateOrderRefundService,
     updateOrderReturnService,
@@ -205,6 +207,18 @@ const reportAmountYear = async (req, res) => {
     }
 };
 
+const reportInvestmentYear = async (req, res) => {
+    try {
+        const result = await reportAmountInvestmentYearService();
+        return successResponse(res, "Báo cáo đầu tư theo năm", result);
+    } catch (error) {
+        if (error instanceof ErrorCustom) {
+            return errorResponse400(res, error.message);
+        }
+        return errorResponse500(res, "Lỗi server", error.message);
+    }
+};
+
 const amountYear = async (req, res) => {
     try {
         const result = await amountYearService();
@@ -288,7 +302,7 @@ const getOrderByOrderYearAndMonth = async (req, res) => {
     try {
         const { filter } = aqp(req.query);
         const { page = 0, size = 10 } = filter;
-        const { month, year, statusCode } = req.query;
+        const { month, year, fromDate, toDate, statusCode } = req.query;
 
         const { orders, pagination } = await getOrderByOrderYearAndMonthService(
             {
@@ -296,6 +310,8 @@ const getOrderByOrderYearAndMonth = async (req, res) => {
                 size,
                 month,
                 year,
+                fromDate,
+                toDate,
                 statusCode,
             }
         );
@@ -358,6 +374,29 @@ const reportAmountMonth = async (req, res) => {
         return successResponseList(
             res,
             `Báo cáo doanh thu theo tháng năm ${year}`,
+            result
+        );
+    } catch (error) {
+        if (error instanceof ErrorCustom) {
+            return errorResponse400(res, error.message);
+        }
+        return errorResponse500(res, "Lỗi server", error.message);
+    }
+};
+
+const reportInvestmentMonth = async (req, res) => {
+    try {
+        const { year } = req.query;
+
+        if (!year || isNaN(Number(year))) {
+            throw new ErrorCustom("Năm không hợp lệ");
+        }
+
+        const result = await reportInvestmentByMonthService(Number(year));
+
+        return successResponseList(
+            res,
+            `Báo cáo tổng đầu tư theo tháng năm ${year}`,
             result
         );
     } catch (error) {
@@ -529,6 +568,7 @@ export {
     getOrderDetailByOrderId,
     reportAmountMonth,
     reportAmountYear,
+    reportInvestmentYear,
     amountYear,
     reportByProduct,
     reportByProductByYear,
@@ -538,4 +578,5 @@ export {
     updateSuccess,
     updateOrderReturn,
     updateOrderRefund,
+    reportInvestmentMonth,
 };

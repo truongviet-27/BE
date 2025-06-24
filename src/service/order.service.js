@@ -604,6 +604,48 @@ export const reportAmountYearService = async () => {
     return result;
 };
 
+export const reportAmountInvestmentYearService = async () => {
+    const result = await Attribute.aggregate([
+        {
+            $addFields: {
+                year: {
+                    $year: {
+                        date: "$createdAt",
+                        timezone: "Asia/Ho_Chi_Minh",
+                    },
+                },
+            },
+        },
+
+        {
+            $group: {
+                _id: "$year",
+                investment: {
+                    $sum: {
+                        $multiply: [
+                            { $ifNull: ["$cache", 0] },
+                            { $ifNull: ["$price", 0] },
+                        ],
+                    },
+                },
+            },
+        },
+
+        {
+            $project: {
+                year: "$_id",
+                investment: 1,
+                _id: 0,
+            },
+        },
+        { $sort: { year: 1 } },
+    ]);
+
+    console.log(result, "resultxxx");
+
+    return result;
+};
+
 export const amountYearService = async () => {
     const result = await Order.aggregate([
         {
@@ -1055,6 +1097,8 @@ export const getOrderByOrderYearAndMonthService = async ({
     size = 10,
     month,
     year,
+    fromDate,
+    toDate,
     statusCode,
 }) => {
     const matchFilter = {};
@@ -1068,15 +1112,31 @@ export const getOrderByOrderYearAndMonthService = async ({
     }
 
     if (month) {
-        dateExpr.push({ $eq: [{ $month: "$updatedAt" }, Number(month)] });
+        dateExpr.push({ $eq: [{ $month: "$createdAt" }, Number(month)] });
     }
 
     if (year) {
-        dateExpr.push({ $eq: [{ $year: "$updatedAt" }, Number(year)] });
+        dateExpr.push({ $eq: [{ $year: "$createdAt" }, Number(year)] });
     }
 
     if (dateExpr.length > 0) {
         matchFilter.$expr = { $and: dateExpr };
+    }
+
+    if (fromDate && toDate) {
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+        if (from > to) {
+            throw new ErrorCustom(
+                "Ngày bắt đầu không được lớn hơn ngày kết thúc"
+            );
+        }
+        from.setHours(0, 0, 0, 0);
+        to.setHours(23, 59, 59, 999);
+        matchFilter["createdAt"] = {
+            $gte: from,
+            $lte: to,
+        };
     }
 
     const result = await Order.aggregate([
@@ -1381,6 +1441,56 @@ export const reportRevenueByMonthService = async (year) => {
                 realizedRevenue: 1,
                 unearnedRevenue: 1,
                 unsuccessfulRevenue: 1,
+            },
+        },
+        {
+            $sort: { month: 1 },
+        },
+    ]);
+
+    return result;
+};
+
+export const reportInvestmentByMonthService = async (year) => {
+    const startDate = new Date(`${year}-01-01`);
+    const endDate = new Date(`${+year + 1}-01-01`);
+
+    const result = await Attribute.aggregate([
+        {
+            $match: {
+                updatedAt: {
+                    $gte: startDate,
+                    $lt: endDate,
+                    $type: "date",
+                },
+            },
+        },
+
+        {
+            $addFields: {
+                month: { $month: "$createdAt" },
+            },
+        },
+
+        {
+            $group: {
+                _id: "$month",
+                investment: {
+                    $sum: {
+                        $multiply: [
+                            { $ifNull: ["$cache", 0] },
+                            { $ifNull: ["$price", 0] },
+                        ],
+                    },
+                },
+            },
+        },
+
+        {
+            $project: {
+                _id: 0,
+                month: "$_id",
+                investment: 1,
             },
         },
         {
@@ -1698,7 +1808,9 @@ export const getAllOrdersWithPagination = async (query) => {
         const fromDate = new Date(from);
         const toDate = new Date(to);
         if (fromDate > toDate) {
-            throw new ErrorCustom("Ngày bắt đầu không được lớn hơn ngày kết thúc");
+            throw new ErrorCustom(
+                "Ngày bắt đầu không được lớn hơn ngày kết thúc"
+            );
         }
         fromDate.setHours(0, 0, 0, 0);
         toDate.setHours(23, 59, 59, 999);

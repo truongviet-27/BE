@@ -70,6 +70,7 @@ const calculateCosineSimilarity = (tfidfMatrix) => {
 
     for (let i = 0; i < rowCount; i++) {
         const vecI = mat.subset(index(i, range(0, colCount))).toArray()[0];
+
         for (let j = 0; j < rowCount; j++) {
             const vecJ = mat.subset(index(j, range(0, colCount))).toArray()[0];
             similarityMatrix[i][j] = cosineValueSimilarity(vecI, vecJ);
@@ -119,6 +120,8 @@ const getRecommendationsService = async (productId, page = 0, size = 5) => {
     const similarProducts = new Map(
         similarityMatrix[indexProduct].map((score, i) => [i, score])
     );
+
+    console.log(similarityMatrix, similarProducts, "similarProducts");
 
     const sortedProductIndices = [...similarProducts.entries()]
         .sort(([_, scoreA], [__, scoreB]) => scoreB - scoreA)
