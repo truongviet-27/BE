@@ -101,6 +101,7 @@ const getRecommendationsService = async (productId, page = 0, size = 5) => {
             },
         },
     ]);
+
     const featuresList = products.map((product) =>
         combineFeatures({
             code: product.code,
@@ -141,7 +142,75 @@ const getRecommendationsService = async (productId, page = 0, size = 5) => {
 
     const productIds = paginatedProducts.map((p) => p._id);
     const [attributes, brands, sales, images] = await Promise.all([
-        Attribute.find({ product: { $in: productIds } }),
+        Attribute.aggregate([
+            {
+                $match: { product: { $in: productIds } },
+            },
+            {
+                $lookup: {
+                    from: "orderdetails",
+                    localField: "_id",
+                    foreignField: "attribute",
+                    as: "orderDetails",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$orderDetails",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $lookup: {
+                    from: "orders",
+                    localField: "orderDetails.order",
+                    foreignField: "_id",
+                    as: "order",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$order",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $lookup: {
+                    from: "orderstatuses",
+                    localField: "order.orderStatus",
+                    foreignField: "_id",
+                    as: "orderStatus",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$orderStatus",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $group: {
+                    _id: "$_id",
+                    doc: { $first: "$$ROOT" },
+                    sumOrder: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ["$orderStatus.code", "DELIVERED"] },
+                                "$orderDetails.quantity",
+                                0,
+                            ],
+                        },
+                    },
+                },
+            },
+            {
+                $replaceRoot: {
+                    newRoot: {
+                        $mergeObjects: ["$doc", { sumOrder: "$sumOrder" }],
+                    },
+                },
+            },
+        ]),
         Brand.find({ _id: { $in: paginatedProducts.map((p) => p.brand) } }),
         Sale.find({ _id: { $in: paginatedProducts.map((p) => p.sale) } }),
         Image.find({ product: { $in: productIds } }),
@@ -161,6 +230,7 @@ const getRecommendationsService = async (productId, page = 0, size = 5) => {
             stock: attr.stock,
             cache: attr.cache,
             product: attr.product,
+            sumOrder: attr.sumOrder,
         });
     });
 
