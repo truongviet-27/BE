@@ -33,7 +33,11 @@ const getBrandByIdService = async (id) => {
 };
 
 const createBrandService = async ({ name, description }) => {
-    const brand = await Brand.create({ name, description });
+    const brand = await Brand.create({
+        name,
+        description,
+        code: name.split(" ").join("").toUpperCase(),
+    });
     return brand;
 };
 
@@ -41,7 +45,14 @@ const updateBrandService = async (data) => {
     const { _id, ...updateData } = data;
     validateMongoDbId(_id);
 
-    const brand = await Brand.findByIdAndUpdate(_id, updateData, { new: true });
+    const brand = await Brand.findByIdAndUpdate(
+        _id,
+        {
+            ...updateData,
+            code: updateData.name.split(" ").join("").toUpperCase(),
+        },
+        { new: true }
+    );
 
     return brand;
 };

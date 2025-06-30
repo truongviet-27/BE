@@ -8,6 +8,9 @@ import Product_Category from "../model/product_category.js";
 import cloudinary from "../config/cloudinary.js";
 import validateMongoDbId from "../utils/validateMongodbId.js";
 import Image from "../model/image.js";
+import Brand from "../model/brand.js";
+import UserReviewAttribute from "../model/user_review_attribute.js";
+import CartItem from "../model/cartItem.js";
 
 const getAllProductService = async (query) => {
     const { filter } = aqp(query);
@@ -424,7 +427,21 @@ const createProductService = async (data) => {
     try {
         const { categories, attributes, images, ...productData } = data;
 
-        const [product] = await Product.create([productData], { session });
+        const [products, brand] = await Promise.all([
+            Product.find({ brand: productData.brand }).sort({ createdAt: -1 }),
+            Brand.findById(productData.brand),
+        ]);
+
+        const lastProduct = products[0];
+        const lastCode = lastProduct?.code?.toUpperCase().split("-")[1] || "0";
+        const productIdentity = +lastCode + 1;
+
+        const productCode = `${brand?.code || "BRAND"}-${productIdentity}`;
+
+        const [product] = await Product.create(
+            [{ ...productData, code: productCode }],
+            { session }
+        );
 
         const urls = await Promise.all(
             images.map(async (base64) => {
@@ -616,6 +633,22 @@ const deleteProductService = async (id) => {
     const deleted = await Product.findByIdAndDelete({
         _id: new mongoose.Types.ObjectId(id),
     });
+
+    if (!deleted) {
+        throw new ErrorCustom("Product not found");
+    }
+
+    const attributes = await Attribute.find({ product: id });
+    const attributeIds = attributes.map((attr) => attr._id);
+
+    await Promise.all([
+        Image.deleteMany({ product: id }),
+        Product_Category.deleteMany({ product: id }),
+        Attribute.deleteMany({ product: id }),
+        CartItem.deleteMany({ attributeId: { $in: attributeIds } }),
+        UserReviewAttribute.deleteMany({ product: id }),
+        ProductUserLike.deleteMany({ product: id }),
+    ]);
 
     return deleted;
 };

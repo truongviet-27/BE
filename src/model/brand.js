@@ -6,7 +6,7 @@ const brandsSchema = new mongoose.Schema(
             type: String,
             require: true,
         },
-        image: {
+        code: {
             type: String,
             require: true,
         },
